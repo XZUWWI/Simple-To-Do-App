@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple To-Do Test</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-tasks"></i> Simple To-Do Test</h1>
+            <button id="darkModeToggle" class="dark-mode-toggle" aria-label="Toggle dark mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+
+        <main class="main-content">
+            <section class="task-input-section">
+                <form id="taskForm" class="task-form">
+                    <div class="input-group">
+                        <input type="text" id="taskInput" placeholder="What needs to be done?" required class="task-input">
+                        <input type="date" id="dueDateInput" class="due-date-input">
+                        <input type="text" id="tagsInput" placeholder="Tags (e.g., #work #urgent)" class="tags-input">
+                        <button type="submit" class="add-task-btn">
+                            <i class="fas fa-plus"></i> Add Task
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="tasks-section">
+                <div class="tasks-header">
+                    <h2>Tasks <span id="taskCount" class="task-count">(0)</span></h2>
+                </div>
+                <div id="tasksList" class="tasks-list">
+                    <!-- Tasks will be dynamically inserted here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let isDarkMode = false;
+        let tasks = [];
+        // Load from localStorage
+        if (localStorage.getItem('simple-tasks')) {
+            tasks = JSON.parse(localStorage.getItem('simple-tasks'));
+        }
+        if (localStorage.getItem('simple-dark-mode')) {
+            isDarkMode = JSON.parse(localStorage.getItem('simple-dark-mode'));
+            if (isDarkMode) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('darkModeToggle').innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                document.getElementById('darkModeToggle').innerHTML = '<i class="fas fa-moon"></i>';
+            }
+        }
+        // Dark mode toggle
+        document.getElementById('darkModeToggle').addEventListener('click', function() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('simple-dark-mode', JSON.stringify(isDarkMode));
+            if (isDarkMode) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                this.innerHTML = '<i class="fas fa-sun"></i>';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                this.innerHTML = '<i class="fas fa-moon"></i>';
+            }
+        });
+        // Task form submission
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const taskText = document.getElementById('taskInput').value;
+            const dueDate = document.getElementById('dueDateInput').value;
+            const tags = document.getElementById('tagsInput').value;
+            if (taskText.trim()) {
+                const task = {
+                    id: Date.now().toString(),
+                    text: taskText,
+                    completed: false,
+                    dueDate: dueDate,
+                    tags: tags.split(' ').filter(tag => tag.startsWith('#')),
+                    createdAt: new Date().toISOString()
+                };
+                tasks.unshift(task);
+                localStorage.setItem('simple-tasks', JSON.stringify(tasks));
+                renderTasks();
+                this.reset();
+            }
+        });
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            const taskCount = document.getElementById('taskCount');
+            taskCount.textContent = `(${tasks.length})`;
+            if (tasks.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h3>No tasks yet</h3>
+                        <p>Add your first task to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+            tasksList.innerHTML = tasks.map(task => `
+                <div class="task-item" data-task-id="${task.id}">
+                    <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleComplete('${task.id}', this.checked)">
+                    <div class="task-content">
+                        <div class="task-text">${task.text}</div>
+                        <div class="task-meta">
+                            ${task.dueDate ? `
+                                <div class="task-due-date">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>${task.dueDate}</span>
+                                </div>
+                            ` : ''}
+                            ${task.tags.length > 0 ? `
+                                <div class="task-tags">
+                                    ${task.tags.map(tag => `<span class="task-tag">${tag}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="task-btn delete-btn" onclick="deleteTask('${task.id}')" title="Delete task">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        function deleteTask(taskId) {
+            tasks = tasks.filter(t => t.id !== taskId);
+            localStorage.setItem('simple-tasks', JSON.stringify(tasks));
+            renderTasks();
+        }
+        window.deleteTask = deleteTask;
+        function toggleComplete(taskId, checked) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = checked;
+                localStorage.setItem('simple-tasks', JSON.stringify(tasks));
+                renderTasks();
+            }
+        }
+        window.toggleComplete = toggleComplete;
+        renderTasks();
+    </script>
+</body>
+</html> 
